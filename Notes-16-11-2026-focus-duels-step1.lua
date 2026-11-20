@@ -5362,9 +5362,11 @@ loadConfig = function(externalCfg)
         batAimMode = "normal"
     end
     if cfg.skyTheme ~= nil then __HH.currentSkyTheme = cfg.skyTheme end
-    -- UI scale and GUI size use the fixed startup settings requested here.
-    uiScaleValue = 0.7
-    __HH.guiSizeValue = 2
+    if cfg.uiScale ~= nil then uiScaleValue = cfg.uiScale end
+    if type(cfg.guiSize) == "number" then
+        -- Convert older saved scale values to the new 2-5 size selector.
+        __HH.guiSizeValue = math.clamp(math.floor(cfg.guiSize * 2 + 1.5), 2, 5)
+    end
         if cfg.espEnabled ~= nil then __HH.espEnabled = cfg.espEnabled end
     if type(cfg.headlessEnabled) == "boolean" then __HH.headlessEnabled = cfg.headlessEnabled end
     if type(cfg.korbloxEnabled) == "boolean" then __HH.korbloxEnabled = cfg.korbloxEnabled end
@@ -5517,8 +5519,8 @@ local function applyState()
     if __HH.currentSkyTheme and __HH.currentSkyTheme ~= "Off" then applySkyTheme(__HH.currentSkyTheme) end
     if __HH.mainFrame and __HH.uiScaleObject then __HH.uiScaleObject.Scale = uiScaleValue end
     if __HH.mainFrame then
-        __HH.guiSizeValue = 2
-        __HH.mainFrame.Size = UDim2.new(0, 430, 0, 450)
+        local sizeStep = ((__HH.guiSizeValue or 2) - 3) * 50
+        __HH.mainFrame.Size = UDim2.new(0, 480 + sizeStep, 0, 500 + sizeStep)
     end
     if autoLeftEnabled then startAutoLeft() end
     if autoLeftSetVisual then autoLeftSetVisual(autoLeftEnabled) end
@@ -9523,8 +9525,8 @@ local function buildGui()
 
     __HH.mainFrame = Instance.new("Frame", gui)
     __HH.mainFrame.Name = "MainFrame"
-    __HH.guiSizeValue = 2
-    __HH.mainFrame.Size = UDim2.new(0, 430, 0, 450)
+    local sizeStep = ((__HH.guiSizeValue or 2) - 3) * 50
+    __HH.mainFrame.Size = UDim2.new(0, 480 + sizeStep, 0, 500 + sizeStep)
     __HH.mainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
     __HH.mainFrame.Position = UDim2.new(0.5, 0, 0.5, 0) -- always opens in the center of the screen
     __HH.panelScaleObject = nil -- GUI Size now adjusts width and height directly.
@@ -12018,7 +12020,7 @@ local function buildGui()
         scaleTb.Size = UDim2.new(0, 64, 1, 0)
         scaleTb.Position = UDim2.new(0, 10, 0, 0)
         scaleTb.BackgroundTransparency = 1
-        scaleTb.Text = tostring(math.floor(uiScaleValue * 10 + 0.5))
+        scaleTb.Text = tostring(uiScaleValue)
         scaleTb.TextColor3 = WHITE
         scaleTb.Font = Enum.Font.GothamSemibold
         scaleTb.TextSize = 14
@@ -12043,13 +12045,12 @@ local function buildGui()
         scaleTb.FocusLost:Connect(function()
             TS:Create(shStroke, TweenInfo.new(0.12), {Color = Color3.fromRGB(69, 88, 134), Transparency = 0.25}):Play()
             local v = tonumber(scaleTb.Text)
-            if v and v >= 1 and v <= 10 and v == math.floor(v) then
-                uiScaleValue = v / 10
-                if __HH.uiScaleObject then __HH.uiScaleObject.Scale = uiScaleValue end
-                scaleTb.Text = tostring(v)
+            if v and v >= 0.4 and v <= 1.3 then
+                uiScaleValue = v
+                if __HH.uiScaleObject then __HH.uiScaleObject.Scale = v end
                 saveConfig()
             else
-                scaleTb.Text = tostring(math.floor(uiScaleValue * 10 + 0.5))
+                scaleTb.Text = tostring(uiScaleValue)
             end
         end)
     end
@@ -12186,7 +12187,67 @@ local function buildGui()
         wireResetAllButton(resetAllBtn, "Reset All", flashStatus)
     end
 
-    -- GUI Size is fixed at 2 (430 x 450 px).
+    -- GUI Size: centered number box at the bottom of the Extra tab.
+    -- Resizes the whole panel (same 0.5 - 1.5 multiplier style as UI Scale).
+    do
+        local sizeRow = mkRow(sfExtra)
+        local sizeHolder = Instance.new("Frame", sizeRow)
+        sizeHolder.AnchorPoint = Vector2.new(0.5, 0.5)
+        sizeHolder.Size = UDim2.new(0, 152, 0, 28)
+        sizeHolder.Position = UDim2.new(0.5, 0, 0.5, 0)
+        sizeHolder.BackgroundColor3 = INP_BG
+        sizeHolder.BackgroundTransparency = 0.18
+        sizeHolder.BorderSizePixel = 0
+        sizeHolder.ZIndex = 5
+        Instance.new("UICorner", sizeHolder).CornerRadius = UDim.new(0, 8)
+        local szStroke = Instance.new("UIStroke", sizeHolder)
+        szStroke.Color = Color3.fromRGB(69, 88, 134)
+        szStroke.Thickness = 1.1
+        szStroke.Transparency = 0.25
+
+        local sizeTb = Instance.new("TextBox", sizeHolder)
+        sizeTb.Size = UDim2.new(0, 64, 1, 0)
+        sizeTb.Position = UDim2.new(0, 10, 0, 0)
+        sizeTb.BackgroundTransparency = 1
+        sizeTb.Text = tostring(__HH.guiSizeValue or 2)
+        sizeTb.TextColor3 = WHITE
+        sizeTb.Font = Enum.Font.GothamSemibold
+        sizeTb.TextSize = 14
+        sizeTb.TextXAlignment = Enum.TextXAlignment.Left
+        sizeTb.ClearTextOnFocus = false
+        sizeTb.ZIndex = 6
+
+        local sizeCaption = Instance.new("TextLabel", sizeHolder)
+        sizeCaption.Size = UDim2.new(0, 74, 1, 0)
+        sizeCaption.Position = UDim2.new(1, -82, 0, 0)
+        sizeCaption.BackgroundTransparency = 1
+        sizeCaption.Text = "GUI Size"
+        sizeCaption.TextColor3 = Color3.fromRGB(176, 200, 240)
+        sizeCaption.Font = Enum.Font.GothamMedium
+        sizeCaption.TextSize = 13
+        sizeCaption.TextXAlignment = Enum.TextXAlignment.Right
+        sizeCaption.ZIndex = 6
+
+        sizeTb.Focused:Connect(function()
+            TS:Create(szStroke, TweenInfo.new(0.12), {Color = BLUE_GLOW, Transparency = 0}):Play()
+        end)
+        sizeTb.FocusLost:Connect(function()
+            TS:Create(szStroke, TweenInfo.new(0.12), {Color = Color3.fromRGB(69, 88, 134), Transparency = 0.25}):Play()
+            -- 2 = -50 px, 3 = original, 4 = +50 px, 5 = +100 px.
+            -- Roblox UI uses pixels, not physical centimetres.
+            local v = tonumber(sizeTb.Text)
+            if v and v >= 2 and v <= 5 and v == math.floor(v) then
+                __HH.guiSizeValue = v
+                local sizeStep = (v - 3) * 50
+                if __HH.mainFrame then
+                    __HH.mainFrame.Size = UDim2.new(0, 480 + sizeStep, 0, 500 + sizeStep)
+                end
+                saveConfig()
+            else
+                sizeTb.Text = tostring(__HH.guiSizeValue or 2)
+            end
+        end)
+    end
 
     -- ─── Mobile Tab ─────────────────────────────────────────────────────────
     do
