@@ -4302,7 +4302,7 @@ function saveConfig()
         uiLocked = __HH.uiLocked, perButtonDragEnabled = __HH.perButtonDragEnabled,
         batV2Enabled = __HH.batV2Enabled,
         batAimMode = batAimMode,
-        skyTheme = __HH.currentSkyTheme, uiScale = uiScaleValue, guiSize = __HH.guiSizeValue,
+        skyTheme = __HH.currentSkyTheme, uiScale = uiScaleValue, guiSize = 2,
         buttonVisibility = __HH.buttonVisibility,
         espEnabled = __HH.espEnabled,
         headlessEnabled = __HH.headlessEnabled,
@@ -5362,11 +5362,8 @@ loadConfig = function(externalCfg)
         batAimMode = "normal"
     end
     if cfg.skyTheme ~= nil then __HH.currentSkyTheme = cfg.skyTheme end
-    if type(cfg.uiScale) == "number" then
-        -- Older configs store the multiplier (for example 0.7); keep its size unchanged.
-        uiScaleValue = math.clamp(cfg.uiScale, 0.1, 1.0)
-    end
-    -- GUI size is fixed permanently at option 2; ignore any older saved value.
+    if type(cfg.uiScale) == "number" then uiScaleValue = math.clamp(cfg.uiScale, 0.1, 1.0) end
+    -- GUI Size is fixed permanently at 2 (430 x 450 pixels).
     __HH.guiSizeValue = 2
         if cfg.espEnabled ~= nil then __HH.espEnabled = cfg.espEnabled end
     if type(cfg.headlessEnabled) == "boolean" then __HH.headlessEnabled = cfg.headlessEnabled end
@@ -5520,8 +5517,8 @@ local function applyState()
     if __HH.currentSkyTheme and __HH.currentSkyTheme ~= "Off" then applySkyTheme(__HH.currentSkyTheme) end
     if __HH.mainFrame and __HH.uiScaleObject then __HH.uiScaleObject.Scale = uiScaleValue end
     if __HH.mainFrame then
-        local sizeStep = ((__HH.guiSizeValue or 3) - 3) * 50
-        __HH.mainFrame.Size = UDim2.new(0, 480 + sizeStep, 0, 500 + sizeStep)
+        __HH.guiSizeValue = 2
+        __HH.mainFrame.Size = UDim2.new(0, 430, 0, 450)
     end
     if autoLeftEnabled then startAutoLeft() end
     if autoLeftSetVisual then autoLeftSetVisual(autoLeftEnabled) end
@@ -9526,8 +9523,8 @@ local function buildGui()
 
     __HH.mainFrame = Instance.new("Frame", gui)
     __HH.mainFrame.Name = "MainFrame"
-    local sizeStep = ((__HH.guiSizeValue or 3) - 3) * 50
-    __HH.mainFrame.Size = UDim2.new(0, 480 + sizeStep, 0, 500 + sizeStep)
+    __HH.guiSizeValue = 2
+    __HH.mainFrame.Size = UDim2.new(0, 430, 0, 450)
     __HH.mainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
     __HH.mainFrame.Position = UDim2.new(0.5, 0, 0.5, 0) -- always opens in the center of the screen
     __HH.panelScaleObject = nil -- GUI Size now adjusts width and height directly.
@@ -10490,9 +10487,7 @@ local function buildGui()
             armed = false
             btn.Text = defaultText
             performResetAllSettings()
-            if __HH.showWelcomeToast then
-                __HH.showWelcomeToast("[FOCUS DUELS] Config Resetted!")
-            end
+            if __HH.showWelcomeToast then __HH.showWelcomeToast("[FOCUS DUELS] Config Resetted!") end
             if flashStatusFn then flashStatusFn("All settings reset to default!") end
         end)
     end
@@ -12192,9 +12187,7 @@ local function buildGui()
         wireResetAllButton(resetAllBtn, "Reset All", flashStatus)
     end
 
-    -- GUI Size is fixed permanently at 2; the user-facing size option is removed.
-    __HH.guiSizeValue = 2
-    if __HH.mainFrame then __HH.mainFrame.Size = UDim2.new(0, 430, 0, 450) end
+    -- GUI Size is fixed permanently at 2 (430 x 450 pixels).
 
     -- ─── Mobile Tab ─────────────────────────────────────────────────────────
     do
@@ -12311,6 +12304,7 @@ local function buildGui()
 end
 
 loadConfig()
+uiScaleValue = math.clamp(tonumber(uiScaleValue) or 0.7, 0.1, 1.0)
 __HH.guiSizeValue = 2
 
 -- ============================================================
@@ -12328,7 +12322,7 @@ do
 
     -- Small toast used for the "welcome to sound hub!" message.
     local function showWelcomeToast(message)
-        message = message or "welcome to sound hub!"
+        message = (type(message) == "string" and message ~= "") and message or "welcome to sound hub!"
         print(message)
         pcall(function()
             local coreGui = game:GetService("CoreGui")
